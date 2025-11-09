@@ -54,11 +54,11 @@ class PackerSettings {
   }
 
   static PackerSettings defaults() => const PackerSettings(
-    maxWidth: 2048,
-    maxHeight: 2048,
+    maxWidth: 1024,
+    maxHeight: 1024,
     padding: 2,
     extrude: 1,
-    allowRotation: true,
+    allowRotation: false,
     powerOfTwo: true,
     squareOnly: false,
     format: AtlasJsonFormat.array,

@@ -18,6 +18,7 @@ class TexturePacker {
   Future<PackingReport> packDirectory({
     required Directory inputDir,
     required Directory outputDir,
+    Iterable<String>? allowedSprites,
   }) async {
     if (!inputDir.existsSync()) {
       throw Exception('Input directory does not exist: ${inputDir.path}');
@@ -25,7 +26,8 @@ class TexturePacker {
 
     outputDir.createSync(recursive: true);
 
-    final sprites = await _loadSprites(inputDir);
+    final allowedSet = allowedSprites?.toSet();
+    final sprites = await _loadSprites(inputDir, allowedSet);
     if (sprites.isEmpty) {
       throw Exception('No PNG files found under ${inputDir.path}');
     }
@@ -90,7 +92,10 @@ class TexturePacker {
     return PackingReport(pageImages: previews, diagnostics: diagnostics);
   }
 
-  Future<List<SourceSprite>> _loadSprites(Directory dir) async {
+  Future<List<SourceSprite>> _loadSprites(
+    Directory dir,
+    Set<String>? allowed,
+  ) async {
     final sprites = <SourceSprite>[];
     final entries = dir.listSync(recursive: true)
       ..sort((a, b) => a.path.compareTo(b.path));
@@ -111,6 +116,9 @@ class TexturePacker {
       final relative = p
           .relative(entity.path, from: dir.path)
           .replaceAll('\\', '/');
+      if (allowed != null && !allowed.contains(relative)) {
+        continue;
+      }
       sprites.add(
         SourceSprite(
           path: entity.path,

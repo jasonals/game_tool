@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 
 import '../packer/atlas_models.dart';
 import '../packer/packing_job.dart';
+import '../packer/sprite_scanner.dart';
+import '../packer/tps_project.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,6 +24,8 @@ class _HomePageState extends State<HomePage> {
   List<PagePreview> _previews = const [];
   bool _isPacking = false;
   int _selectedPreview = 0;
+  bool _isScanningSprites = false;
+  List<SpriteEntry> _spriteEntries = const [];
 
   late final TextEditingController _maxWidthCtrl;
   late final TextEditingController _maxHeightCtrl;
@@ -56,134 +60,166 @@ class _HomePageState extends State<HomePage> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _PathPicker(
-              label: 'Source folder',
-              path: _inputDir,
-              onPick: _pickInput,
-            ),
-            const SizedBox(height: 12),
-            _PathPicker(
-              label: 'Output folder',
-              path: _outputDir,
-              onPick: _pickOutput,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Packing Settings',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 12,
-              children: [
-                _buildNumberField(
-                  'Max width',
-                  _maxWidthCtrl,
-                  (value) => _updateSettings(maxWidth: value),
-                ),
-                _buildNumberField(
-                  'Max height',
-                  _maxHeightCtrl,
-                  (value) => _updateSettings(maxHeight: value),
-                ),
-                _buildNumberField(
-                  'Padding',
-                  _paddingCtrl,
-                  (value) => _updateSettings(padding: value),
-                ),
-                _buildNumberField(
-                  'Edge extrude',
-                  _extrudeCtrl,
-                  (value) => _updateSettings(extrude: value),
-                ),
-                SizedBox(
-                  width: 220,
-                  child: TextField(
-                    controller: _outputNameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Output basename',
-                    ),
-                    onChanged: (value) {
-                      if (value.isEmpty) return;
-                      _updateSettings(outputName: value);
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<AtlasJsonFormat>(
-                    initialValue: _settings.format,
-                    decoration: const InputDecoration(labelText: 'JSON format'),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      _updateSettings(format: value);
-                    },
-                    items: AtlasJsonFormat.values
-                        .map(
-                          (format) => DropdownMenuItem(
-                            value: format,
-                            child: Text(format.name),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              children: [
-                SizedBox(
-                  width: 240,
-                  child: SwitchListTile.adaptive(
-                    title: const Text('Allow 90° rotation'),
-                    value: _settings.allowRotation,
-                    onChanged: (value) => _updateSettings(allowRotation: value),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                SizedBox(
-                  width: 240,
-                  child: SwitchListTile.adaptive(
-                    title: const Text('Power-of-two dimensions'),
-                    value: _settings.powerOfTwo,
-                    onChanged: (value) => _updateSettings(powerOfTwo: value),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                SizedBox(
-                  width: 240,
-                  child: SwitchListTile.adaptive(
-                    title: const Text('Square pages only'),
-                    value: _settings.squareOnly,
-                    onChanged: (value) => _updateSettings(squareOnly: value),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _isPacking ? null : _startPacking,
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Pack Atlas'),
-                ),
-                const SizedBox(width: 16),
-                if (_isPacking) const CircularProgressIndicator(),
-              ],
-            ),
-            const SizedBox(height: 16),
             Expanded(
+              flex: 2,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _PathPicker(
+                      label: 'Source folder',
+                      path: _inputDir,
+                      onPick: _pickInput,
+                    ),
+                    const SizedBox(height: 12),
+                    _PathPicker(
+                      label: 'Output folder',
+                      path: _outputDir,
+                      onPick: _pickOutput,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _loadTps,
+                          icon: const Icon(Icons.folder_open),
+                          label: const Text('Load .tps'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _saveTps,
+                          icon: const Icon(Icons.save),
+                          label: const Text('Save .tps'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Packing Settings',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 12,
+                      children: [
+                        _buildNumberField(
+                          'Max width',
+                          _maxWidthCtrl,
+                          (value) => _updateSettings(maxWidth: value),
+                        ),
+                        _buildNumberField(
+                          'Max height',
+                          _maxHeightCtrl,
+                          (value) => _updateSettings(maxHeight: value),
+                        ),
+                        _buildNumberField(
+                          'Padding',
+                          _paddingCtrl,
+                          (value) => _updateSettings(padding: value),
+                        ),
+                        _buildNumberField(
+                          'Edge extrude',
+                          _extrudeCtrl,
+                          (value) => _updateSettings(extrude: value),
+                        ),
+                        SizedBox(
+                          width: 220,
+                          child: TextField(
+                            controller: _outputNameCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Output basename',
+                            ),
+                            onChanged: (value) {
+                              if (value.isEmpty) return;
+                              _updateSettings(outputName: value);
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 220,
+                          child: DropdownButtonFormField<AtlasJsonFormat>(
+                            initialValue: _settings.format,
+                            decoration: const InputDecoration(
+                              labelText: 'JSON format',
+                            ),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              _updateSettings(format: value);
+                            },
+                            items: AtlasJsonFormat.values
+                                .map(
+                                  (format) => DropdownMenuItem(
+                                    value: format,
+                                    child: Text(format.name),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      children: [
+                        SizedBox(
+                          width: 240,
+                          child: SwitchListTile.adaptive(
+                            title: const Text('Allow 90° rotation'),
+                            value: _settings.allowRotation,
+                            onChanged: (value) =>
+                                _updateSettings(allowRotation: value),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 240,
+                          child: SwitchListTile.adaptive(
+                            title: const Text('Power-of-two dimensions'),
+                            value: _settings.powerOfTwo,
+                            onChanged: (value) =>
+                                _updateSettings(powerOfTwo: value),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 240,
+                          child: SwitchListTile.adaptive(
+                            title: const Text('Square pages only'),
+                            value: _settings.squareOnly,
+                            onChanged: (value) =>
+                                _updateSettings(squareOnly: value),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _isPacking ? null : _startPacking,
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Pack Atlas'),
+                        ),
+                        const SizedBox(width: 16),
+                        if (_isPacking) const CircularProgressIndicator(),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 3,
               child: Row(
                 children: [
                   Expanded(
+                    flex: 2,
                     child: Card(
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -196,6 +232,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
+                    flex: 3,
                     child: Card(
                       child: _PreviewPane(
                         previews: _previews,
@@ -205,6 +242,17 @@ class _HomePageState extends State<HomePage> {
                             _selectedPreview = value;
                           });
                         },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 3,
+                    child: Card(
+                      child: _SpriteListPanel(
+                        sprites: _spriteEntries,
+                        isLoading: _isScanningSprites,
+                        onToggle: _toggleSprite,
                       ),
                     ),
                   ),
@@ -246,6 +294,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _inputDir = path;
     });
+    await _refreshSpriteList();
   }
 
   Future<void> _pickOutput() async {
@@ -282,6 +331,67 @@ class _HomePageState extends State<HomePage> {
         format: format,
         outputName: outputName,
       );
+      if (maxWidth != null) {
+        _maxWidthCtrl.text = '${_settings.maxWidth}';
+      }
+      if (maxHeight != null) {
+        _maxHeightCtrl.text = '${_settings.maxHeight}';
+      }
+      if (padding != null) {
+        _paddingCtrl.text = '${_settings.padding}';
+      }
+      if (extrude != null) {
+        _extrudeCtrl.text = '${_settings.extrude}';
+      }
+      if (outputName != null && _outputNameCtrl.text != _settings.outputName) {
+        _outputNameCtrl.text = _settings.outputName;
+      }
+    });
+  }
+
+  Future<void> _refreshSpriteList() async {
+    final dir = _inputDir;
+    if (dir == null) {
+      setState(() {
+        _spriteEntries = const [];
+        _isScanningSprites = false;
+      });
+      return;
+    }
+    setState(() {
+      _isScanningSprites = true;
+    });
+    try {
+      final records = await compute(scanSpriteDirectory, dir);
+      if (!mounted) return;
+      setState(() {
+        _spriteEntries = records
+            .map((record) => SpriteEntry(record: record))
+            .toList();
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to scan sprites: $error')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isScanningSprites = false;
+        });
+      }
+    }
+  }
+
+  void _toggleSprite(int index, bool include) {
+    setState(() {
+      _spriteEntries = [
+        for (var i = 0; i < _spriteEntries.length; i++)
+          i == index
+              ? _spriteEntries[i].copyWith(included: include)
+              : _spriteEntries[i],
+      ];
     });
   }
 
@@ -295,6 +405,28 @@ class _HomePageState extends State<HomePage> {
         );
       }
       return;
+    }
+    List<String>? allowedSprites;
+    if (_spriteEntries.isNotEmpty) {
+      final included = _spriteEntries
+          .where((entry) => entry.included)
+          .map((entry) => entry.record.relativePath)
+          .toList();
+      if (included.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Select at least one sprite to include before packing.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+      if (included.length != _spriteEntries.length) {
+        allowedSprites = included;
+      }
     }
     final inputPath = _inputDir!;
     final outputPath = _outputDir!;
@@ -312,6 +444,7 @@ class _HomePageState extends State<HomePage> {
         inputPath: inputPath,
         outputPath: outputPath,
         settings: snapshot,
+        allowedSprites: allowedSprites,
       );
       final report = await compute(runPackingJob, job);
 
@@ -338,6 +471,70 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           _isPacking = false;
         });
+      }
+    }
+  }
+
+  Future<void> _loadTps() async {
+    final file = await openFile(
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'TexturePacker Project', extensions: ['tps']),
+      ],
+    );
+    if (file == null) return;
+    try {
+      final content = await file.readAsString();
+      final project = TextureProject.fromString(content);
+      setState(() {
+        _settings = project.settings;
+        _inputDir = project.sourcePath ?? _inputDir;
+        _outputDir = project.outputPath ?? _outputDir;
+        _maxWidthCtrl.text = '${_settings.maxWidth}';
+        _maxHeightCtrl.text = '${_settings.maxHeight}';
+        _paddingCtrl.text = '${_settings.padding}';
+        _extrudeCtrl.text = '${_settings.extrude}';
+        _outputNameCtrl.text = _settings.outputName;
+      });
+      await _refreshSpriteList();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Loaded project from ${file.name}')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load TPS: $error')));
+      }
+    }
+  }
+
+  Future<void> _saveTps() async {
+    final location = await getSaveLocation(
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'TexturePacker Project', extensions: ['tps']),
+      ],
+      suggestedName: '${_settings.outputName}.tps',
+    );
+    if (location == null) return;
+    final project = TextureProject(
+      settings: _settings,
+      sourcePath: _inputDir,
+      outputPath: _outputDir,
+    );
+    try {
+      await File(location.path).writeAsString(project.toPrettyString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Saved project to ${location.path}')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save TPS: $error')));
       }
     }
   }
@@ -456,4 +653,87 @@ class _PreviewPane extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SpriteListPanel extends StatelessWidget {
+  const _SpriteListPanel({
+    required this.sprites,
+    required this.isLoading,
+    required this.onToggle,
+  });
+
+  final List<SpriteEntry> sprites;
+  final bool isLoading;
+  final void Function(int index, bool include) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (sprites.isEmpty) {
+      return const Center(
+        child: Text('Select a source folder to list sprites.'),
+      );
+    }
+    final included = sprites.where((s) => s.included).length;
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Sprites ($included/${sprites.length})',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView.builder(
+              itemCount: sprites.length,
+              itemBuilder: (context, index) {
+                final entry = sprites[index];
+                return CheckboxListTile(
+                  value: entry.included,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    onToggle(index, value);
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  secondary: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Image.memory(
+                      entry.record.thumbnail,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.none,
+                    ),
+                  ),
+                  title: Text(
+                    entry.record.relativePath,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    '${entry.record.width}×${entry.record.height}',
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SpriteEntry {
+  const SpriteEntry({required this.record, this.included = true});
+
+  final SpritePreviewRecord record;
+  final bool included;
+
+  SpriteEntry copyWith({bool? included}) =>
+      SpriteEntry(record: record, included: included ?? this.included);
 }

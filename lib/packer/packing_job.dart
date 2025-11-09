@@ -8,11 +8,13 @@ class PackingJob {
     required this.inputPath,
     required this.outputPath,
     required this.settings,
+    this.allowedSprites,
   });
 
   final String inputPath;
   final String outputPath;
   final PackerSettings settings;
+  final List<String>? allowedSprites;
 }
 
 Future<PackingReport> executePacking(PackingJob job) {
@@ -20,6 +22,7 @@ Future<PackingReport> executePacking(PackingJob job) {
   return packer.packDirectory(
     inputDir: Directory(job.inputPath),
     outputDir: Directory(job.outputPath),
+    allowedSprites: job.allowedSprites,
   );
 }
 
