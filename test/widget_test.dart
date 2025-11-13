@@ -10,10 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:game_tool/app/app.dart';
 
 void main() {
-  testWidgets('Renders home page', (WidgetTester tester) async {
+  testWidgets('Renders navigation', (WidgetTester tester) async {
     await tester.pumpWidget(const GameToolApp());
 
-    expect(find.text('TexturePacker-Style Tool'), findsOneWidget);
-    expect(find.text('Pack Atlas'), findsOneWidget);
+    expect(find.text('Texture Atlas'), findsOneWidget);
+    expect(find.text('Audio Sprite'), findsOneWidget);
   });
 }

@@ -56,7 +56,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('TexturePacker-Style Tool')),
+      appBar: AppBar(title: const Text('Texture Atlas Packer')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'home_page.dart';
+import 'main_navigation.dart';
 
 class GameToolApp extends StatelessWidget {
   const GameToolApp({super.key});
@@ -8,12 +8,12 @@ class GameToolApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Texture Packer',
+      title: 'Game Tool - Texture & Audio Packer',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: const MainNavigation(),
     );
   }
 }
