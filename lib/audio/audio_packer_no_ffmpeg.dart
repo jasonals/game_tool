@@ -77,12 +77,29 @@ Future<AudioPackingReport> runAudioPackingJob(AudioPackingJob job) async {
       try {
         final wav = WavFile.fromFile(file);
 
-        // Convert format if needed
-        final converted = WavConcatenator.convertFormat(
-          source: wav,
-          targetSampleRate: job.settings.sampleRate,
-          targetChannels: 2, // Always use stereo
+        diagnostics.add(
+          '  $nameWithoutExt (original): ${wav.duration.toStringAsFixed(2)}s '
+          '(${wav.sampleRate}Hz, ${wav.numChannels}ch, ${wav.bitsPerSample}bit)',
         );
+
+        // Convert format if needed
+        final needsConversion = wav.sampleRate != job.settings.sampleRate ||
+                                wav.numChannels != 2;
+
+        final converted = needsConversion
+            ? WavConcatenator.convertFormat(
+                source: wav,
+                targetSampleRate: job.settings.sampleRate,
+                targetChannels: 2, // Always use stereo
+              )
+            : wav;
+
+        if (needsConversion) {
+          diagnostics.add(
+            '    → converted: ${converted.duration.toStringAsFixed(2)}s '
+            '(${converted.sampleRate}Hz, ${converted.numChannels}ch, ${converted.bitsPerSample}bit)',
+          );
+        }
 
         wavFiles.add(converted);
 
@@ -90,11 +107,6 @@ Future<AudioPackingReport> runAudioPackingJob(AudioPackingJob job) async {
         soundMap[nameWithoutExt] = currentTime;
         soundMap['${nameWithoutExt}_end'] = currentTime + converted.duration;
         currentTime += converted.duration;
-
-        diagnostics.add(
-          '  $nameWithoutExt: ${converted.duration.toStringAsFixed(2)}s '
-          '(${converted.sampleRate}Hz, ${converted.numChannels}ch, ${converted.bitsPerSample}bit)',
-        );
       } catch (error) {
         diagnostics.add('  ⚠ Failed to process $relativePath: $error');
       }

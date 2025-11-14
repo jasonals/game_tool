@@ -227,14 +227,11 @@ class WavConcatenator {
         final monoOffset = i * bytesPerSample;
 
         if (bytesPerSample == 2) {
-          // 16-bit audio
-          final left = source.audioData[leftOffset] |
-              (source.audioData[leftOffset + 1] << 8);
-          final right = source.audioData[rightOffset] |
-              (source.audioData[rightOffset + 1] << 8);
-          final mono = ((left + right) / 2).round() & 0xFFFF;
-          targetData[monoOffset] = mono & 0xFF;
-          targetData[monoOffset + 1] = (mono >> 8) & 0xFF;
+          // 16-bit audio (signed)
+          final left = _readInt16(source.audioData, leftOffset);
+          final right = _readInt16(source.audioData, rightOffset);
+          final mono = ((left + right) / 2).round();
+          _writeInt16(targetData, monoOffset, mono);
         }
       }
     } else if (sourceChannels == 1 && targetChannels == 2) {
@@ -257,6 +254,23 @@ class WavConcatenator {
       bitsPerSample: source.bitsPerSample,
       audioData: targetData,
     );
+  }
+
+  // Helper to read signed 16-bit integer from bytes
+  static int _readInt16(Uint8List data, int offset) {
+    final value = data[offset] | (data[offset + 1] << 8);
+    // Convert unsigned to signed
+    return value > 0x7FFF ? value - 0x10000 : value;
+  }
+
+  // Helper to write signed 16-bit integer to bytes
+  static void _writeInt16(Uint8List data, int offset, int value) {
+    // Clamp to 16-bit signed range
+    final clamped = value.clamp(-32768, 32767);
+    // Convert signed to unsigned for storage
+    final unsigned = clamped < 0 ? clamped + 0x10000 : clamped;
+    data[offset] = unsigned & 0xFF;
+    data[offset + 1] = (unsigned >> 8) & 0xFF;
   }
 
   static WavFile _resample(WavFile source, int targetSampleRate) {
@@ -283,14 +297,11 @@ class WavConcatenator {
           final targetOffset = (i * source.numChannels + ch) * bytesPerSample;
 
           if (bytesPerSample == 2) {
-            // 16-bit audio
-            final sample1 = source.audioData[offset1] |
-                (source.audioData[offset1 + 1] << 8);
-            final sample2 = source.audioData[offset2] |
-                (source.audioData[offset2 + 1] << 8);
-            final interpolated = (sample1 + (sample2 - sample1) * frac).round() & 0xFFFF;
-            targetData[targetOffset] = interpolated & 0xFF;
-            targetData[targetOffset + 1] = (interpolated >> 8) & 0xFF;
+            // 16-bit audio (signed)
+            final sample1 = _readInt16(source.audioData, offset1);
+            final sample2 = _readInt16(source.audioData, offset2);
+            final interpolated = (sample1 + (sample2 - sample1) * frac).round();
+            _writeInt16(targetData, targetOffset, interpolated);
           }
         }
       } else {
